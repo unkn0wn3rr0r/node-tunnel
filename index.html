@@ -10,7 +10,7 @@
 </head>
 
 <body>
-    <h1>🚀 Real-time File Upload</h1>
+    <h1>🚇 Real-time File Upload</h1>
     <div class="dropbox" id="dropbox">
         <input class="visually-hidden" type="file" id="fileInput" multiple />
         <label for="fileInput">Drop files or click here</label>
@@ -18,8 +18,8 @@
 
     <div class="file-info">
         <div class="info-block">
-            <label for="fileNum">📄 Selected files:</label>
-            <output id="fileNum">0</output>
+            <label for="fileCount">📄 Selected files:</label>
+            <output id="fileCount">0</output>
         </div>
 
         <div class="info-block">
@@ -29,8 +29,12 @@
     </div>
 
     <div id="progressBar">
-        <div id="progress"></div>
+        <div id="progress">
+            <span id="progressText">0%</span>
+        </div>
     </div>
+
+    <button id="cancelBtn" hidden>Cancel Upload</button>
 
     <script src="index.js"></script>
 </body>

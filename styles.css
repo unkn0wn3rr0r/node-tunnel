@@ -3,7 +3,7 @@ body {
     padding: 2em;
 }
 
-.dropzone {
+.dropbox {
     border: 3px dashed #999;
     padding: 50px;
     text-align: center;
@@ -14,14 +14,30 @@ body {
 #progressBar {
     width: 100%;
     height: 20px;
-    background: #eee;
-    margin-top: 1em;
+    background-color: #eee;
+    margin-top: 10px;
+    border-radius: 4px;
+    position: relative;
+    overflow: visible;
 }
 
 #progress {
     height: 100%;
-    width: 0;
-    background: green;
+    width: 0%;
+    background-color: #4caf50;
+    transition: width 0.2s ease-in-out;
+    border-radius: 4px;
+}
+
+#progressText {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 16px;
+    color: #000;
+    white-space: nowrap;
+    pointer-events: none;
 }
 
 .file-info {
@@ -55,4 +71,33 @@ output {
     font-weight: bold;
     min-width: 30px;
     text-align: center;
+}
+
+.visually-hidden {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
+input.visually-hidden:is(:focus, :focus-within)+label {
+    outline: thin dotted;
+}
+
+#cancelBtn {
+    margin-top: 12px;
+    padding: 6px 12px;
+    font-size: 14px;
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+#cancelBtn:hover {
+    background-color: #d32f2f;
 }
