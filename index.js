@@ -6,10 +6,10 @@ const progress = document.getElementById('progress');
 const progressText = document.getElementById('progressText');
 const cancelBtn = document.getElementById('cancelBtn');
 
-dropbox.addEventListener('dragenter', debounce(suppressEvents));
-dropbox.addEventListener('dragover', debounce(suppressEvents));
-dropbox.addEventListener('drop', debounce(drop));
-fileInput.addEventListener('change', debounce(handleFiles));
+dropbox.addEventListener('dragenter', suppressEvents);
+dropbox.addEventListener('dragover', suppressEvents);
+dropbox.addEventListener('drop', drop);
+fileInput.addEventListener('change', handleFiles);
 
 function suppressEvents(e) {
     e.stopPropagation();
@@ -38,7 +38,6 @@ function handleFiles(files) {
 
 function sendFiles(data) {
     const xhr = new XMLHttpRequest();
-    let isAborted = false;
     xhr.upload.addEventListener('progress', function (e) {
         if (e.lengthComputable) {
             const percent = (e.loaded / e.total) * 100;
@@ -49,29 +48,32 @@ function sendFiles(data) {
     xhr.upload.addEventListener('loadstart', () => {
         fileInput.disabled = true;
         cancelBtn.hidden = false;
-        cancelBtn.addEventListener('click', debounce(() => {
-            if (!confirm("Are you sure you want to stop?")) {
+        cancelBtn.addEventListener('click', () => {
+            if (!confirm('Are you sure you want to stop?')) {
                 return;
             }
-            isAborted = true;
             xhr.abort();
-        }));
+        });
     });
-    xhr.upload.addEventListener('loadend', () => {
-        if (!isAborted) {
+    xhr.addEventListener('readystatechange', () => {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            progress.style.width = '100%';
             setTimeout(() => {
                 alert('Files uploaded successfully!');
                 resetUploadState();
             }, 1000);
         }
     });
-    xhr.upload.addEventListener('abort', () => {
+    xhr.upload.addEventListener('timeout', () => {
+        alert('Request timed out!');
         resetUploadState();
     });
-    xhr.addEventListener('readystatechange', () => {
-        if (xhr.readyState === 4 && xhr.status === 200) {
-            progress.style.width = '100%';
-        }
+    xhr.upload.addEventListener('error', () => {
+        alert('Request errored out!');
+        resetUploadState();
+    });
+    xhr.upload.addEventListener('abort', () => {
+        resetUploadState();
     });
     xhr.open('POST', '/upload');
     xhr.send(data);
@@ -112,12 +114,4 @@ function isFileEmpty(exponent, approx) {
         || approx === -Infinity
         || isNaN(exponent)
         || isNaN(approx);
-}
-
-function debounce(fn, delay = 300) {
-    let timeout = 0;
-    return function (...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => fn.apply(this, args), delay);
-    };
 }
