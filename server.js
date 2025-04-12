@@ -26,7 +26,16 @@ const server = http.createServer((req, res) => {
         handleFileUpload(req, res);
     }
 });
+server.on('dropRequest', (req, socket) => {
+    console.warn(`[DROP REQUEST]: ${socket.remoteAddress} dropped`);
+    console.warn(`[DROP REQUEST]: request closed: ${req.closed}`);
+    console.warn(`[DROP REQUEST]: request completed: ${req.complete}`);
+    console.error(`[DROP REQUEST]: request error: ${req.errored?.message ?? 'N/A'}`);
+});
 server.on('error', (error) => console.error(`[ERROR]: ${error.message}`));
+server.on('close', () => console.log('[CLOSE]: Server is closing the connection..'));
+server.on('connection', (socket) => console.log(`[CONNECTION]: ${socket.remoteAddress} connected`));
+server.on('clientError', (error, socket) => console.error(`[CLIENT ERROR]: ${socket.remoteAddress} errored out with: ${error.message}`));
 server.listen(PORT, () => console.log(`Server listening on port http://${getServerAddress()}:${PORT}`));
 
 function writeResponse(res, data, contentType) {
