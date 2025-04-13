@@ -2,6 +2,7 @@ const dropbox = document.getElementById('dropbox');
 const fileInput = document.getElementById('fileInput');
 const fileCount = document.getElementById('fileCount');
 const fileSize = document.getElementById('fileSize');
+const filesUploaded = document.getElementById('filesUploaded');
 const progress = document.getElementById('progress');
 const progressText = document.getElementById('progressText');
 const cancelBtn = document.getElementById('cancelBtn');
@@ -21,110 +22,63 @@ function drop(e) {
     handleFiles(e.dataTransfer.files);
 }
 
-function handleFiles(files) {
+async function handleFiles(files) {
     const fileList = this.files ?? files;
-
-    console.log(fileList);
-
-    let numberOfBytes = 0;
-    for (const file of fileList) {
-        numberOfBytes += file.size;
-    }
+    const totalFileSize = getTotalFileSize(fileList);
 
     fileCount.textContent = fileList.length;
-    fileSize.textContent = getFileSizeFormat(numberOfBytes);
+    fileSize.textContent = getFileSizeFormat(totalFileSize);
+    fileInput.disabled = true;
+    cancelBtn.hidden = false;
 
     let loaded = 0;
-    let countFiles = fileList.length;
-
-    // const streams = Array.from(fileList).map(async (file) => {
-    //     return fetch('https://localhost:3000/uploads', {
-    //         method: 'POST',
-    //         headers: { 'x-filename': file.name },
-    //         duplex: 'half',
-    //         body: new ReadableStream({
-    //             start(controller) {
-    //                 const reader = file.stream().getReader();
-    //                 (function read() {
-    //                     reader.read().then(({ done, value }) => {
-    //                         if (done) {
-    //                             fileCount.textContent = --countFiles;
-    //                             if (countFiles <= 0) {
-    //                                 setTimeout(() => {
-    //                                     alert('Files uploaded successfully!');
-    //                                     resetUploadState();
-    //                                 }, 1000);
-    //                             }
-    //                             return controller.close();
-    //                         }
-    //                         loaded += value.byteLength;
-
-    //                         calculateProgress(loaded, numberOfBytes);
-
-    //                         controller.enqueue(value);
-    //                         read();
-    //                     }).catch((error) => {
-    //                         console.error(error);
-    //                         controller.error(error);
-    //                     });
-    //                 })();
-    //             },
-    //         }),
-    //     });
-    // });
-
-    // Promise.all(streams)
-    //     .then((x) => console.log(x))
-    //     .catch((error) => {
-    //         console.error('[ERROR]:', error);
-    //     });
-
+    let uploaded = 0;
     for (const file of fileList) {
         const stream = new ReadableStream({
-            start(controller) {
-                const reader = file.stream().getReader();
-                (function read() {
-                    reader.read().then(({ done, value }) => {
+            async start(controller) {
+                try {
+                    const reader = file.stream().getReader();
+                    while (true) {
+                        const { done, value } = await reader.read();
                         if (done) {
-                            fileCount.textContent = --countFiles;
-                            if (countFiles <= 0) {
-                                setTimeout(() => {
-                                    alert('Files uploaded successfully!');
-                                    resetUploadState();
-                                }, 1000);
-                            }
-                            return controller.close();
+                            filesUploaded.textContent = ++uploaded;
+                            controller.close();
+                            break;
                         }
                         loaded += value.byteLength;
-
-                        calculateProgress(loaded, numberOfBytes);
-
+                        calculateProgress(loaded, totalFileSize);
                         controller.enqueue(value);
-                        read();
-                    }).catch((error) => {
-                        console.error(error);
-                        controller.error(error);
-                    });
-                })();
+                    }
+                } catch (error) {
+                    console.error(error);
+                    controller.error(error);
+                }
             },
         });
 
-        fetch('https://localhost:3000/uploads', {
-            method: 'POST',
-            headers: { 'x-filename': file.name },
-            duplex: 'half',
-            body: stream,
-        })
-            .then(() => {
-                console.log('download completed');
-            })
-            .catch((error) => console.error(error))
-
-        console.log('loaded =>', loaded);
-        console.log('numberOfBytes =>', numberOfBytes);
-
-        // sendFiles(data);
+        try {
+            await fetch('https://localhost:3000/uploads', {
+                method: 'POST',
+                headers: { 'x-filename': encodeURIComponent(file.name) },
+                duplex: 'half',
+                body: stream,
+            });
+            console.log(`File upload was successful: ${file.name}`);
+        } catch (error) {
+            console.error(`File upload failed: ${file.name} ${error.message}`);
+        }
     }
+
+    alert('Files uploaded successfully!');
+    resetUploadState();
+}
+
+function getTotalFileSize(files) {
+    let size = 0;
+    for (const file of files) {
+        size += file.size;
+    }
+    return size;
 }
 
 function calculateProgress(loaded, total) {
@@ -133,15 +87,12 @@ function calculateProgress(loaded, total) {
     progressText.textContent = percent.toFixed() + '%';
 }
 
-function sendFiles(data) {
-
-}
-
 function resetUploadState() {
     progress.style.width = '0%';
     progressText.textContent = '0%';
     fileCount.textContent = 0;
     fileSize.textContent = 0;
+    filesUploaded.textContent = 0;
     fileInput.value = '';
     fileInput.disabled = false;
     cancelBtn.hidden = true;
@@ -162,11 +113,6 @@ function getFileSizeFormat(numberOfBytes) {
     if (exponent === 0) {
         return `${numberOfBytes} ${units[exponent]}`;
     }
-    // if (exponent > 3 || (exponent === 3 && approx > 10)) {
-    //     alert('File is too large. Try with file/s less than 10 Gib.');
-    //     resetUploadState();
-    //     throw new Error('File is too large. Try with file/s less than 10 Gib.');
-    // }
     return `${approx.toFixed(3)} ${units[exponent]}`;
 }
 

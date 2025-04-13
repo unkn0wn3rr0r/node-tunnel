@@ -1,78 +1,45 @@
 const http2 = require('node:http2');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 
-const MBS = 64 * 1024 * 1024 // 64
 const PORT = 3000;
 const MIME_TYPES = {
     '.html': 'text/html',
     '.css': 'text/css',
     '.js': 'application/javascript',
-    // '.json': 'application/json',
-    // '.png': 'image/png',
-    // '.jpg': 'image/jpeg',
-    // '.ico': 'image/x-icon',
-    // '.txt': 'text/plain',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.ico': 'image/x-icon',
+    '.txt': 'text/plain',
 };
 
-ensureUploadDirExists();
+ensureDirExists('uploads');
+ensureDirExists('certs');
+
+const keyPath = getFilepath('certs', 'localhost-privkey.pem');
+const certPath = getFilepath('certs', 'localhost-cert.pem');
+
+ensurePEMFilesExist(keyPath, certPath);
 
 const options = {
-    key: fs.readFileSync(getFilepath('certs', 'localhost-privkey.pem')),
-    cert: fs.readFileSync(getFilepath('certs', 'localhost-cert.pem')),
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath),
     allowHTTP1: true,
 };
-const html = fs.readFileSync(path.resolve('index.html'), { encoding: 'utf-8' });
-// const js = fs.readFileSync(path.resolve('index.js'), { encoding: 'utf-8' });
-// const css = fs.readFileSync(path.resolve('styles.css'), { encoding: 'utf-8' });
 
 const server = http2.createSecureServer(options, (req, res) => {
-    if (req.url === '/') {
-        res.writeHead(200, {
-            'Content-Type': 'text/html',
-        });
-        res.write(html);
-        res.end();
-        return;
-    }
-
-    if (req.url === '/uploads') {
-        return handleFileUpload(req, res);
-    }
-
-    try {
+    if (req.method === 'POST' && req.url === '/uploads') {
+        handleFileUpload(req, res);
+    } else {
         const filepath = getAssetFilepath(req.url);
         const mimeType = MIME_TYPES[getExtension(filepath)];
-
-        res.writeHead(200, { 'Content-Type': mimeType });
-
-        const readStream = fs.createReadStream(filepath);
-        readStream.pipe(res);
-    } catch (error) {
-        console.log(error);
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.write('File not found');
-        res.end();
+        handleStaticAssets(res, filepath, mimeType);
     }
 });
-// const server = http2.createSecureServer(options, (req, res) => {
-//     const filepath = getAssetFilepath(req.url);
-//     const mimeType = MIME_TYPES[getExtension(filepath)];
-//     if (mimeType) {
-//         handleStaticAssets(res, filepath, mimeType);
-//     } else if (req.method === 'POST' && req.url === '/upload') {
-//         handleFileUpload(req, res);
-//     }
-// });
 server.on('sessionError', (error) => console.error(`[SESSION ERROR]: ${error.message}`));
-server.on('timeout', () => console.error('[TIMEOUT]: timed out!'));
-server.listen(PORT, () => console.log(`Server listening on port https://localhost:${PORT}`));
-
-function writeResponse(res, data, contentType) {
-    res.writeHead(res.statusCode, { 'Content-Type': contentType });
-    res.end(data);
-}
+server.on('timeout', () => console.error('[TIMEOUT]: timed out'));
+server.listen(PORT, () => console.log(`Server listening on https://localhost:${PORT}`));
 
 function handleStaticAssets(res, filepath, mimeType) {
     fs.readFile(filepath, (err, data) => {
@@ -85,13 +52,12 @@ function handleStaticAssets(res, filepath, mimeType) {
 }
 
 function handleFileUpload(req, res) {
-    const filename = req.headers['x-filename'];
-    const filepath = getFilepath('uploads', filename);
-    const writeStream = fs.createWriteStream(filepath, { highWaterMark: MBS });
+    const filename = decodeURIComponent(req.headers['x-filename']);
+    const writeStream = fs.createWriteStream(getFilepath('uploads', filename), { highWaterMark: 1024 * 1024 });
     req.on('data', (chunk) => {
         if (!writeStream.write(chunk)) {
-            console.log('pause');
             req.pause();
+            console.log('pause');
         }
     });
     writeStream.on('drain', () => {
@@ -99,8 +65,14 @@ function handleFileUpload(req, res) {
         console.log('resume');
     });
     req.on('end', () => {
-        writeResponse(res, `✅ Saved file: ${filename}`, 'text/plain');
+        console.log(`✅ Saved file: ${filename}`);
+        writeResponse(res, Buffer.from(`Saved file: ${filename}`), 'application/octet-stream');
     });
+}
+
+function writeResponse(res, data, contentType) {
+    res.writeHead(res.statusCode, { 'Content-Type': contentType });
+    res.end(data);
 }
 
 function getFilepath(...args) {
@@ -115,13 +87,24 @@ function getExtension(filepath) {
     return path.extname(filepath).toLowerCase();
 }
 
-function ensureUploadDirExists() {
-    const uploadDir = getFilepath('uploads');
-    if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir);
+function ensureDirExists(dirname) {
+    const dir = getFilepath(dirname);
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir);
     }
 }
 
-// function getServerAddress() {
-//     return Object.values(os.networkInterfaces()).flat().find((i) => i.family === 'IPv4' && !i.internal).address;
-// }
+function ensurePEMFilesExist(keyPath, certPath) {
+    if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+        console.error('❌ Missing PEM file(s):');
+        if (!fs.existsSync(keyPath)) {
+            console.error(` - ${keyPath}`);
+        }
+        if (!fs.existsSync(certPath)) {
+            console.error(` - ${certPath}`);
+        }
+        console.error('Please create the required PEM files before starting the server.');
+        console.log('You can try to create them with the following command: openssl req -x509 -newkey rsa:2048 -nodes -sha256 -subj "//CN=localhost" -keyout localhost-privkey.pem -out localhost-cert.pem');
+        process.exit(1);
+    }
+}
