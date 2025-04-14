@@ -44,7 +44,7 @@ async function handleFiles(files) {
         const uploadTask = async () => {
             let fileLoaded = 0;
             const stream = new ReadableStream({
-                async start(controller) {
+                start(controller) {
                     const reader = file.stream().getReader();
                     (function read() {
                         reader.read().then(({ done, value }) => {
