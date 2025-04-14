@@ -30,8 +30,8 @@ Both versions include drag-and-drop functionality, real-time progress bars, and 
 - 🔁 Concurrency control for smoother UX (**http2** only)
 
 # Notes
-- Uses duplex: 'half' for streamed fetch uploads - ensure the browser and server support it.
-- The UI simulates progress to smooth out jumps due to fast async handling vs slower network speed.
+- Uses duplex: 'half' for streamed fetch uploads - ensure the browser and server support it
+- The UI simulates progress to smooth out jumps due to fast async handling vs slower network speed
 
 # 📦 Prerequisites:
 - Node.js installed - 20+
@@ -50,3 +50,9 @@ Both versions include drag-and-drop functionality, real-time progress bars, and 
    - Go to http://localhost:3000 in your browser for **http1**
    - Go to https://localhost:3000 in your browser for **http2**
 
+# 📚 Disclaimer:
+This project was built for fun and educational purposes — to explore file uploading, streaming with HTTP/2, and browser-based UI interactions.
+While functional, it has limitations and areas that can be improved, such as:
+- Error handling and retry logic
+- Cancel upload functionality (button is present but not connected)
+- Not optimized for ultra-large files — uploads over 40-50 GiBs or into the terabyte range may fail or behave unpredictably due to browser, memory, or network constraints
