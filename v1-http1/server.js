@@ -1,7 +1,6 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 
 const PORT = 3000;
 const MIME_TYPES = {
@@ -18,7 +17,7 @@ const MIME_TYPES = {
 ensureUploadDirExists();
 
 const server = http.createServer((req, res) => {
-    const filepath = getAssetFilepath(req.url);
+    const filepath = getFilepath(req.url === '/' ? 'index.html' : req.url);
     const mimeType = MIME_TYPES[getExtension(filepath)];
     if (mimeType) {
         handleStaticAssets(res, filepath, mimeType);
@@ -36,7 +35,7 @@ server.on('error', (error) => console.error(`[ERROR]: ${error.message}`));
 server.on('close', () => console.log('[CLOSE]: Server is closing the connection..'));
 server.on('connection', (socket) => console.log(`[CONNECTION]: ${socket.remoteAddress} connected`));
 server.on('clientError', (error, socket) => console.error(`[CLIENT ERROR]: ${socket.remoteAddress} errored out with: ${error.message}`));
-server.listen(PORT, () => console.log(`Server listening on http://${getServerAddress()}:${PORT}`));
+server.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
 
 function writeResponse(res, data, contentType) {
     res.writeHead(res.statusCode, { 'Content-Type': contentType });
@@ -86,7 +85,7 @@ function handleFileUpload(req, res) {
                 if (err) {
                     throw err;
                 }
-                console.log(`✅ Saved file: ${filename}`);
+                console.log(`✅ Upload successful: ${filename}`);
             });
         });
 
@@ -107,8 +106,8 @@ function splitBuffer(buffer, delimiter) {
     return parts;
 }
 
-function getAssetFilepath(url) {
-    return path.normalize(path.join(process.cwd(), url === '/' ? 'index.html' : url));
+function getFilepath(...args) {
+    return path.join(__dirname, ...args);
 }
 
 function getExtension(filepath) {
@@ -120,8 +119,4 @@ function ensureUploadDirExists() {
     if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir);
     }
-}
-
-function getServerAddress() {
-    return Object.values(os.networkInterfaces()).flat().find((i) => i.family === 'IPv4' && !i.internal).address;
 }

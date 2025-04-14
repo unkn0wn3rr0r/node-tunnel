@@ -104,7 +104,7 @@ function getFileSizeFormat(numberOfBytes) {
     if (exponent === 0) {
         return `${numberOfBytes} ${units[exponent]}`;
     }
-    if (approx > 300 || exponent > 2) {
+    if (exponent > 2 || (exponent === 2 && approx > 300)) {
         alert('File is too large. Try with file/s less than 300 Mib.');
         resetUploadState();
         throw new Error('File is too large. Try with file/s less than 300 Mib.');
