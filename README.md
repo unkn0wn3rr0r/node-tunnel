@@ -1,9 +1,9 @@
 # Node-Tunnel 🚇
 **Node-Tunnel** is a lightweight file transfer solution built with Node.js, enabling real-time streaming and progress tracking over a seamless connection.
 
-The project demonstrates a modern browser-based file upload UI, implemented in two versions:
-- **v1-http1/**: Traditional HTTP/1 file uploads (non-streaming).
-- **v2-http2/**: Advanced HTTP/2 implementation with streamed uploads using [ReadableStream](https://streams.spec.whatwg.org/).
+This project demonstrates a modern browser-based file upload UI implemented in vanilla JavaScript and pure Node.js, which comes in two versions:
+- **v1-http1/**: Traditional HTTP/1 file uploads (non-streaming)
+- **v2-http2/**: Advanced HTTP/2 implementation with streamed uploads using [ReadableStream](https://streams.spec.whatwg.org/)
   
 Both versions include drag-and-drop functionality, real-time progress bars, and user feedback modals.
 
@@ -16,7 +16,7 @@ Both versions include drag-and-drop functionality, real-time progress bars, and 
 | Upload method                    | Full file read (in memory)       | Streamed with `ReadableStream` (minimal memory usage)     |
 | Browser compatibility            | Widely supported                 | Requires modern browsers                                  |
 | Server requirements              | Pure Node.js (no libs)           | Pure Node.js (no libs)                                    |
-| Performance                      | Slow 🐢 (files up to 300 MiBs)   | Lightning fast  🚈                                       |
+| Performance                      | Slow 🐢 (files up to 300 MiBs)   | Lightning fast  🚈  (depends on network connection)      |
 
 # Features:
 
@@ -34,7 +34,7 @@ Both versions include drag-and-drop functionality, real-time progress bars, and 
 - The UI simulates progress to smooth out jumps due to fast async handling vs slower network speed
 
 # 📦 Prerequisites:
-- Node.js installed - 20+
+- Node.js installed - v20+
 - Modern web browser (for HTTP/2 streaming support in **v2-http2**)
 - Self-signed certificates for local HTTPS (required for HTTP/2)
 
