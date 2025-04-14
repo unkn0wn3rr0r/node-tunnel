@@ -44,9 +44,14 @@ Both versions include drag-and-drop functionality, real-time progress bars, and 
    ```bash
    git clone https://github.com/unkn0wn3rr0r/node-tunnel.git
 2. Install certificates - Only required for **http2**. Make sure you are in the **v2-http2/certs** dir:
+
+- Windows:
    ```bash
-   openssl req -x509 -newkey rsa:2048 -nodes -sha256 -subj "//CN=localhost" -keyout localhost-privkey.pem -out localhost-cert.pem - for Windows
-   openssl req -x509 -newkey rsa:2048 -nodes -sha256 -subj '/CN=localhost' -keyout localhost-privkey.pem -out localhost-cert.pem - for Linux
+   openssl req -x509 -newkey rsa:2048 -nodes -sha256 -subj "//CN=localhost" -keyout localhost-privkey.pem -out localhost-cert.pem
+   ```
+- Linux:
+   ```bash
+   openssl req -x509 -newkey rsa:2048 -nodes -sha256 -subj '/CN=localhost' -keyout localhost-privkey.pem -out localhost-cert.pem
 2. Run the server from **v1-http1** or **v2-http2**:
    ```bash
    node server.js
