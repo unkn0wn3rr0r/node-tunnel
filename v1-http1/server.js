@@ -35,7 +35,7 @@ server.on('error', (error) => console.error(`[ERROR]: ${error.message}`));
 server.on('close', () => console.log('[CLOSE]: Server is closing the connection..'));
 server.on('connection', (socket) => console.log(`[CONNECTION]: ${socket.remoteAddress} connected`));
 server.on('clientError', (error, socket) => console.error(`[CLIENT ERROR]: ${socket.remoteAddress} errored out with: ${error.message}`));
-server.listen(PORT, () => console.log(`Server listening on http://0.0.0.0:${PORT}`));
+server.listen(PORT, () => console.log(`Server listening on http://localhost:${PORT}`));
 
 function writeResponse(res, data, contentType) {
     res.writeHead(res.statusCode, { 'Content-Type': contentType });
