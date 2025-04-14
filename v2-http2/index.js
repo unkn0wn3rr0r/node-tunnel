@@ -3,9 +3,8 @@ const fileInput = document.getElementById('fileInput');
 const fileCount = document.getElementById('fileCount');
 const fileSize = document.getElementById('fileSize');
 const filesUploaded = document.getElementById('filesUploaded');
-const progress = document.getElementById('progress');
-const progressText = document.getElementById('progressText');
-const cancelBtn = document.getElementById('cancelBtn');
+const successModal = document.getElementById('successModal');
+const closeModalBtn = document.getElementById('closeModalBtn');
 
 dropbox.addEventListener('dragenter', suppressEvents);
 dropbox.addEventListener('dragover', suppressEvents);
@@ -29,48 +28,134 @@ async function handleFiles(files) {
     fileCount.textContent = fileList.length;
     fileSize.textContent = getFileSizeFormat(totalFileSize);
     fileInput.disabled = true;
-    cancelBtn.hidden = false;
 
-    let loaded = 0;
+    const MAX_CONCURRENT_UPLOADS = 8;
+    const fileUploadItems = [];
+    const uploadTasks = [];
+
     let uploaded = 0;
     for (const file of fileList) {
-        const stream = new ReadableStream({
-            async start(controller) {
-                try {
-                    const reader = file.stream().getReader();
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) {
-                            filesUploaded.textContent = ++uploaded;
-                            controller.close();
-                            break;
-                        }
-                        loaded += value.byteLength;
-                        calculateProgress(loaded, totalFileSize);
-                        controller.enqueue(value);
-                    }
-                } catch (error) {
-                    console.error(error);
-                    controller.error(error);
-                }
-            },
-        });
+        const fileInfo = createFileInfo(file.name, file.size);
+        const { progressBar, progress, progressText } = createProgressElements();
+        const fileUploadItem = createFileUploadItem(fileInfo, progressBar);
+        fileUploadItems.push(fileUploadItem);
+        document.body.appendChild(fileUploadItem);
 
-        try {
-            await fetch('https://localhost:3000/uploads', {
+        const uploadTask = async () => {
+            let fileLoaded = 0;
+            const stream = new ReadableStream({
+                async start(controller) {
+                    const reader = file.stream().getReader();
+                    (function read() {
+                        reader.read().then(({ done, value }) => {
+                            if (done) {
+                                return controller.close();
+                            }
+                            fileLoaded += value.byteLength;
+                            calculateProgress(fileLoaded, file.size, progress, progressText);
+                            controller.enqueue(value);
+                            read();
+                        }).catch((error) => {
+                            console.error(error);
+                            controller.error(error);
+                        });
+                    })();
+                },
+            });
+
+            return fetch('https://localhost:3000/uploads', {
                 method: 'POST',
                 headers: { 'x-filename': encodeURIComponent(file.name) },
                 duplex: 'half',
                 body: stream,
-            });
-            console.log(`File upload was successful: ${file.name}`);
-        } catch (error) {
-            console.error(`File upload failed: ${file.name} ${error.message}`);
+            })
+                .then(() => {
+                    console.log(`File upload was successful: ${file.name}`);
+                    progress.style.backgroundColor = '#4caf50';
+                })
+                .catch((error) => {
+                    console.error(`File upload failed: ${file.name} ${error.message}`);
+                    progress.style.backgroundColor = 'red';
+                })
+                .finally(() => {
+                    filesUploaded.textContent = ++uploaded;
+                    progress.style.width = '100%';
+                    progressText.textContent = '100%';
+                });
+        };
+
+        uploadTasks.push(uploadTask);
+    }
+
+    await limitConcurrency(uploadTasks, MAX_CONCURRENT_UPLOADS);
+    showModal(fileUploadItems, resetUIState);
+}
+
+async function limitConcurrency(tasks, maxConcurrent) {
+    const results = [];
+    const executing = new Set();
+
+    for (const task of tasks) {
+        const promise = task();
+        results.push(promise);
+
+        executing.add(promise);
+        promise.finally(() => executing.delete(promise));
+
+        if (executing.size >= maxConcurrent) {
+            await Promise.race(executing);
         }
     }
 
-    alert('Files uploaded successfully!');
+    return Promise.all(results);
+}
+
+function resetUIState(fileUploadItems) {
+    fileUploadItems.forEach((item) => item.remove());
     resetUploadState();
+}
+
+function showModal(fileUploadItems, cb) {
+    successModal.style.display = 'flex';
+
+    closeModalBtn.addEventListener('click', () => {
+        successModal.style.display = 'none';
+        cb(fileUploadItems);
+    }, { once: true });
+}
+
+function createElementWrapper(tagName, clazz, textContent) {
+    const element = document.createElement(tagName);
+    element.classList.add(clazz);
+    element.textContent = textContent ?? '';
+    return element;
+}
+
+function createFileInfo(name, size) {
+    const fileInfo = createElementWrapper('div', 'fileInfo', undefined);
+    const fileName = createElementWrapper('span', 'fileName', name);
+    const fileSize = createElementWrapper('span', 'fileSize', `(${getFileSizeFormat(size)})`);
+    const cancelBtn = createElementWrapper('button', 'cancelBtn', 'Cancel Upload');
+    fileInfo.appendChild(fileName);
+    fileInfo.appendChild(fileSize);
+    fileInfo.appendChild(cancelBtn);
+    return fileInfo;
+}
+
+function createProgressElements() {
+    const progressBar = createElementWrapper('div', 'progressBar', undefined);
+    const progress = createElementWrapper('div', 'progress', undefined);
+    const progressText = createElementWrapper('span', 'progressText', '0%');
+    progress.appendChild(progressText);
+    progressBar.appendChild(progress);
+    return { progressBar, progress, progressText };
+}
+
+function createFileUploadItem(fileInfo, progressBar) {
+    const fileUploadItem = createElementWrapper('div', 'fileUploadItem', undefined);
+    fileUploadItem.appendChild(fileInfo);
+    fileUploadItem.appendChild(progressBar);
+    return fileUploadItem;
 }
 
 function getTotalFileSize(files) {
@@ -81,21 +166,20 @@ function getTotalFileSize(files) {
     return size;
 }
 
-function calculateProgress(loaded, total) {
+function calculateProgress(loaded, total, progress, progressText) {
     const percent = (loaded / total) * 100;
-    progress.style.width = percent + '%';
-    progressText.textContent = percent.toFixed() + '%';
+    const randomProgress = Math.floor(90 + Math.random() * 11); // simulate artificial progress, because async ui operations are faster than the servers response, in other words, create a better user experience
+    const finalPercent = Math.min(percent, randomProgress);
+    progress.style.width = finalPercent.toFixed() + '%';
+    progressText.textContent = finalPercent.toFixed() + '%';
 }
 
 function resetUploadState() {
-    progress.style.width = '0%';
-    progressText.textContent = '0%';
     fileCount.textContent = 0;
     fileSize.textContent = 0;
     filesUploaded.textContent = 0;
     fileInput.value = '';
     fileInput.disabled = false;
-    cancelBtn.hidden = true;
 }
 
 function getBaseLog(x, base = 1024) {
