@@ -58,4 +58,4 @@ This project was built for fun and educational purposes — to explore file uplo
 While functional, it has limitations and areas that can be improved, such as:
 - Error handling and retry logic
 - Cancel upload functionality (button is present but not connected)
-- Not optimized for ultra-large files — uploads over 40-50 GiBs or into the terabyte range may fail or behave unpredictably due to browser, memory, or network constraints
+- Not optimized for ultra-large files - uploads over 40-50 GiBs or into the terabyte range may fail or behave unpredictably due to browser, memory, or network constraints
