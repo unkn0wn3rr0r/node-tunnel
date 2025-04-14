@@ -40,7 +40,10 @@ Both versions include drag-and-drop functionality, real-time progress bars, and 
 
 # 🚀 Getting Started:
 
-1. Install certificates - Only required for **http2**. Make sure you are in the **v2-http2** dir:
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/unkn0wn3rr0r/node-tunnel.git
+2. Install certificates - Only required for **http2**. Make sure you are in the **v2-http2** dir:
    ```bash
    openssl req -x509 -newkey rsa:2048 -nodes -sha256 -subj "//CN=localhost" -keyout localhost-privkey.pem -out localhost-cert.pem
 2. Run the server from **v1-http1** or **v2-http2**:
