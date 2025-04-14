@@ -75,7 +75,7 @@ function sendFiles(data) {
             }, 1000);
         }
     });
-    xhr.open('POST', '/upload');
+    xhr.open('POST', '/uploads');
     xhr.send(data);
 }
 

@@ -40,7 +40,7 @@ const server = http2.createSecureServer(options, (req, res) => {
 });
 server.on('sessionError', (error) => console.error(`[SESSION ERROR]: ${error.message}`));
 server.on('timeout', () => console.warn('[TIMEOUT]: timed out'));
-server.listen(PORT, () => console.log(`Server listening on https://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`Server listening on https://0.0.0.0:${PORT}`));
 
 function handleStaticAssets(res, filepath, mimeType) {
     fs.readFile(filepath, (err, data) => {

@@ -43,15 +43,17 @@ Both versions include drag-and-drop functionality, real-time progress bars, and 
 1. Clone the repository:
    ```bash
    git clone https://github.com/unkn0wn3rr0r/node-tunnel.git
-2. Install certificates - Only required for **http2**. Make sure you are in the **v2-http2** dir:
+2. Install certificates - Only required for **http2**. Make sure you are in the **v2-http2/certs** dir:
    ```bash
-   openssl req -x509 -newkey rsa:2048 -nodes -sha256 -subj "//CN=localhost" -keyout localhost-privkey.pem -out localhost-cert.pem
+   openssl req -x509 -newkey rsa:2048 -nodes -sha256 -subj "//CN=localhost" -keyout localhost-privkey.pem -out localhost-cert.pem - for Windows
+   openssl req -x509 -newkey rsa:2048 -nodes -sha256 -subj '/CN=localhost' -keyout localhost-privkey.pem -out localhost-cert.pem - for Linux
 2. Run the server from **v1-http1** or **v2-http2**:
    ```bash
    node server.js
 3. UI:
    - Go to http://localhost:3000 in your browser for **http1**
    - Go to https://localhost:3000 in your browser for **http2**
+   - If you are testing from different machines find your local network IP, for example - https://192.168.xx.xx:3000
 
 # 📚 Disclaimer:
 This project was built for fun and educational purposes — to explore file uploading, streaming with HTTP/2, and browser-based UI interactions.

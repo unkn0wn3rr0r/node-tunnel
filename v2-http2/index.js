@@ -63,7 +63,7 @@ async function handleFiles(files) {
                 },
             });
 
-            return fetch('https://localhost:3000/uploads', {
+            return fetch('/uploads', {
                 method: 'POST',
                 headers: { 'x-filename': encodeURIComponent(file.name) },
                 duplex: 'half',
