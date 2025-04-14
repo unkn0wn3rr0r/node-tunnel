@@ -1,6 +1,7 @@
 const http2 = require('node:http2');
 const fs = require('fs');
 const path = require('path');
+const { finished } = require('node:stream');
 
 const PORT = 3000;
 const MIME_TYPES = {
@@ -32,13 +33,13 @@ const server = http2.createSecureServer(options, (req, res) => {
     if (req.method === 'POST' && req.url === '/uploads') {
         handleFileUpload(req, res);
     } else {
-        const filepath = getAssetFilepath(req.url);
+        const filepath = getFilepath(req.url === '/' ? 'index.html' : req.url);
         const mimeType = MIME_TYPES[getExtension(filepath)];
         handleStaticAssets(res, filepath, mimeType);
     }
 });
 server.on('sessionError', (error) => console.error(`[SESSION ERROR]: ${error.message}`));
-server.on('timeout', () => console.error('[TIMEOUT]: timed out'));
+server.on('timeout', () => console.warn('[TIMEOUT]: timed out'));
 server.listen(PORT, () => console.log(`Server listening on https://localhost:${PORT}`));
 
 function handleStaticAssets(res, filepath, mimeType) {
@@ -57,16 +58,24 @@ function handleFileUpload(req, res) {
     req.on('data', (chunk) => {
         if (!writeStream.write(chunk)) {
             req.pause();
-            console.log('pause');
         }
     });
     writeStream.on('drain', () => {
         req.resume();
-        console.log('resume');
     });
     req.on('end', () => {
-        console.log(`✅ Saved file: ${filename}`);
-        writeResponse(res, Buffer.from(`Saved file: ${filename}`), 'application/octet-stream');
+        writeResponse(res, `Uploaded file: ${filename}`, 'text/plain');
+        writeStream.end();
+    });
+    writeStream.on('finish', () => {
+        const cleanup = finished(writeStream, (err) => {
+            cleanup();
+            if (err) {
+                console.error('Upload failed:', err);
+            } else {
+                console.log(`✅ Upload successful: ${filename}`);
+            }
+        });
     });
 }
 
@@ -77,10 +86,6 @@ function writeResponse(res, data, contentType) {
 
 function getFilepath(...args) {
     return path.join(__dirname, ...args);
-}
-
-function getAssetFilepath(url) {
-    return path.normalize(path.join(process.cwd(), url === '/' ? 'index.html' : url));
 }
 
 function getExtension(filepath) {
