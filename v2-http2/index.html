@@ -31,12 +31,17 @@
             <label for="filesUploaded">📜 Uploaded files:</label>
             <output id="filesUploaded">0</output>
         </div>
+
+        <div class="info-block">
+            <label for="filesCanceled">🗑️ Canceled files:</label>
+            <output id="filesCanceled">0</output>
+        </div>
     </div>
 
     <div id="successModal" class="modal">
         <div class="modal-content">
-            <h2>Upload Complete!</h2>
-            <p>All files were uploaded successfully.</p>
+            <h2>Upload finished!</h2>
+            <p id="uploadInfo"></p>
             <button id="closeModalBtn" class="closeBtn">Close</button>
         </div>
     </div>

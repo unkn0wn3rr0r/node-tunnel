@@ -3,8 +3,10 @@ const fileInput = document.getElementById('fileInput');
 const fileCount = document.getElementById('fileCount');
 const fileSize = document.getElementById('fileSize');
 const filesUploaded = document.getElementById('filesUploaded');
+const filesCanceled = document.getElementById('filesCanceled');
 const successModal = document.getElementById('successModal');
 const closeModalBtn = document.getElementById('closeModalBtn');
+const uploadInfo = document.getElementById('uploadInfo');
 
 dropbox.addEventListener('dragenter', suppressEvents);
 dropbox.addEventListener('dragover', suppressEvents);
@@ -34,20 +36,33 @@ async function handleFiles(files) {
     const uploadTasks = [];
 
     let uploaded = 0;
+    let canceled = 0;
     for (const file of fileList) {
-        const fileInfo = createFileInfo(file.name, file.size);
+        const abortController = new AbortController();
+        const signal = abortController.signal;
+
+        const { fileInfo, cancelBtn } = createFileInfo(file.name, file.size);
         const { progressBar, progress, progressText } = createProgressElements();
+
+        cancelBtn.addEventListener('click', () => {
+            abortController.abort(`Upload canceled: ${file.name}`);
+            cancelBtn.disabled = true;
+        }, { once: true });
+
         const fileUploadItem = createFileUploadItem(fileInfo, progressBar);
         fileUploadItems.push(fileUploadItem);
         document.body.appendChild(fileUploadItem);
 
         const uploadTask = async () => {
             let fileLoaded = 0;
+            const reader = file.stream().getReader();
             const stream = new ReadableStream({
                 start(controller) {
-                    const reader = file.stream().getReader();
                     (function read() {
                         reader.read().then(({ done, value }) => {
+                            if (signal.aborted) {
+                                return;
+                            }
                             if (done) {
                                 return controller.close();
                             }
@@ -61,6 +76,11 @@ async function handleFiles(files) {
                         });
                     })();
                 },
+                cancel(reason) {
+                    if (typeof reader?.cancel === 'function') {
+                        reader.cancel(reason);
+                    }
+                },
             });
 
             return fetch('/uploads', {
@@ -68,19 +88,31 @@ async function handleFiles(files) {
                 headers: { 'x-filename': encodeURIComponent(file.name) },
                 duplex: 'half',
                 body: stream,
+                signal,
             })
                 .then(() => {
                     console.log(`File upload was successful: ${file.name}`);
                     progress.style.backgroundColor = '#4caf50';
-                })
-                .catch((error) => {
-                    console.error(`File upload failed: ${file.name} ${error.message}`);
-                    progress.style.backgroundColor = 'red';
-                })
-                .finally(() => {
-                    filesUploaded.textContent = ++uploaded;
                     progress.style.width = '100%';
                     progressText.textContent = '100%';
+                })
+                .catch((error) => {
+                    if (signal.aborted) {
+                        console.error(error);
+                        progress.style.backgroundColor = 'gray';
+                        progressText.textContent = 'Canceled';
+                    } else {
+                        console.error(`File upload failed: ${file.name} ${error.message}`);
+                        progress.style.backgroundColor = 'red';
+                        progressText.textContent = 'Failed';
+                    }
+                })
+                .finally(() => {
+                    if (!signal.aborted) {
+                        filesUploaded.textContent = ++uploaded;
+                    } else {
+                        filesCanceled.textContent = ++canceled;
+                    }
                 });
         };
 
@@ -88,7 +120,7 @@ async function handleFiles(files) {
     }
 
     await limitConcurrency(uploadTasks, MAX_CONCURRENT_UPLOADS);
-    showModal(fileUploadItems, resetUIState);
+    showModal(fileUploadItems, uploaded, resetUIState);
 }
 
 async function limitConcurrency(tasks, maxConcurrent) {
@@ -115,11 +147,11 @@ function resetUIState(fileUploadItems) {
     resetUploadState();
 }
 
-function showModal(fileUploadItems, cb) {
+function showModal(fileUploadItems, uploadedCount, cb) {
     successModal.style.display = 'flex';
+    uploadInfo.textContent = `${uploadedCount} Files were uploaded successfully.`;
 
     closeModalBtn.addEventListener('click', () => {
-        successModal.style.display = 'none';
         cb(fileUploadItems);
     }, { once: true });
 }
@@ -139,7 +171,7 @@ function createFileInfo(name, size) {
     fileInfo.appendChild(fileName);
     fileInfo.appendChild(fileSize);
     fileInfo.appendChild(cancelBtn);
-    return fileInfo;
+    return { fileInfo, cancelBtn };
 }
 
 function createProgressElements() {
@@ -178,8 +210,11 @@ function resetUploadState() {
     fileCount.textContent = 0;
     fileSize.textContent = 0;
     filesUploaded.textContent = 0;
+    filesCanceled.textContent = 0;
     fileInput.value = '';
     fileInput.disabled = false;
+    uploadInfo.textContent = '';
+    successModal.style.display = 'none';
 }
 
 function getBaseLog(x, base = 1024) {
