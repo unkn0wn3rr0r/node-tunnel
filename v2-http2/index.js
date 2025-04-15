@@ -4,6 +4,7 @@ const fileCount = document.getElementById('fileCount');
 const fileSize = document.getElementById('fileSize');
 const filesUploaded = document.getElementById('filesUploaded');
 const filesCanceled = document.getElementById('filesCanceled');
+const filesFailed = document.getElementById('filesFailed');
 const successModal = document.getElementById('successModal');
 const closeModalBtn = document.getElementById('closeModalBtn');
 const uploadInfo = document.getElementById('uploadInfo');
@@ -37,6 +38,7 @@ async function handleFiles(files) {
 
     let uploaded = 0;
     let canceled = 0;
+    let failed = 0;
     for (const file of fileList) {
         const abortController = new AbortController();
         const signal = abortController.signal;
@@ -83,6 +85,7 @@ async function handleFiles(files) {
                 },
             });
 
+            let hasFailed = false;
             return fetch('/uploads', {
                 method: 'POST',
                 headers: { 'x-filename': encodeURIComponent(file.name) },
@@ -90,7 +93,10 @@ async function handleFiles(files) {
                 body: stream,
                 signal,
             })
-                .then(() => {
+                .then((response) => {
+                    if (!response.ok || response.status !== 200) {
+                        throw new Error('Upload failed.');
+                    }
                     console.log(`File upload was successful: ${file.name}`);
                     progress.style.backgroundColor = '#4caf50';
                     progress.style.width = '100%';
@@ -105,11 +111,14 @@ async function handleFiles(files) {
                         console.error(`File upload failed: ${file.name} ${error.message}`);
                         progress.style.backgroundColor = 'red';
                         progressText.textContent = 'Failed';
+                        hasFailed = true;
                     }
                 })
                 .finally(() => {
                     if (signal.aborted) {
                         filesCanceled.textContent = ++canceled;
+                    } else if (hasFailed) {
+                        filesFailed.textContent = ++failed;
                     } else {
                         filesUploaded.textContent = ++uploaded;
                     }
@@ -211,6 +220,7 @@ function resetUploadState() {
     fileSize.textContent = 0;
     filesUploaded.textContent = 0;
     filesCanceled.textContent = 0;
+    filesFailed.textContent = 0;
     fileInput.value = '';
     fileInput.disabled = false;
     uploadInfo.textContent = '';
