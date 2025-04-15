@@ -45,7 +45,7 @@ server.listen(PORT, () => console.log(`Server listening on https://localhost:${P
 function handleStaticAssets(res, filepath, mimeType) {
     fs.readFile(filepath, (err, data) => {
         if (err) {
-            writeResponse(res, 'Internal Server Error', 'text/plain');
+            writeResponse(res, `Internal Server Error: ${err.message}`, 'text/plain', 500);
         } else {
             writeResponse(res, data, mimeType);
         }
@@ -54,34 +54,42 @@ function handleStaticAssets(res, filepath, mimeType) {
 
 function handleFileUpload(req, res) {
     const filename = decodeURIComponent(req.headers['x-filename']);
-    const writeStream = fs.createWriteStream(getFilepath('uploads', filename), { highWaterMark: 1024 * 1024 });
+    const filepath = getFilepath('uploads', filename);
+    const writeStream = fs.createWriteStream(filepath, { highWaterMark: 1024 * 1024 });
+
+    function handleError(err) {
+        deleteFile(filepath);
+        writeResponse(res, `Upload failed: ${err.message}`, 'text/plain', 500);
+    }
+
+    req.on('end', () => writeStream.end());
+    req.on('error', handleError);
+    req.on('aborted', (_, __) => deleteFile(filepath));
     req.on('data', (chunk) => {
         if (!writeStream.write(chunk)) {
             req.pause();
         }
     });
-    writeStream.on('drain', () => {
-        req.resume();
-    });
-    req.on('end', () => {
-        writeResponse(res, `Uploaded file: ${filename}`, 'text/plain');
-        writeStream.end();
-    });
+
+    writeStream.on('drain', () => req.resume());
+    writeStream.on('error', handleError);
     writeStream.on('finish', () => {
+        console.log(req.aborted ? `❗ Upload canceled: ${filename}` : `✅ Upload successful: ${filename}`);
+        writeResponse(res, req.aborted ? `Upload canceled: ${filename}` : `Uploaded file: ${filename}`, 'text/plain');
         const cleanup = finished(writeStream, (err) => {
             cleanup();
             if (err) {
-                console.error('Upload failed:', err);
-            } else {
-                console.log(`✅ Upload successful: ${filename}`);
+                console.error(`Stream cleanup failed: ${err.message}`);
             }
         });
     });
 }
 
-function writeResponse(res, data, contentType) {
-    res.writeHead(res.statusCode, { 'Content-Type': contentType });
-    res.end(data);
+function writeResponse(res, data, contentType, status = 200) {
+    if (!res.writableEnded) {
+        res.writeHead(status, { 'Content-Type': contentType });
+        res.end(data);
+    }
 }
 
 function getFilepath(...args) {
@@ -90,6 +98,14 @@ function getFilepath(...args) {
 
 function getExtension(filepath) {
     return path.extname(filepath).toLowerCase();
+}
+
+function deleteFile(filepath) {
+    fs.unlink(filepath, (err) => {
+        if (err) {
+            console.error(`File deletion failed: ${filepath} ${err.message}`);
+        }
+    });
 }
 
 function ensureDirExists(dirname) {
