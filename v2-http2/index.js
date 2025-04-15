@@ -108,10 +108,10 @@ async function handleFiles(files) {
                     }
                 })
                 .finally(() => {
-                    if (!signal.aborted) {
-                        filesUploaded.textContent = ++uploaded;
-                    } else {
+                    if (signal.aborted) {
                         filesCanceled.textContent = ++canceled;
+                    } else {
+                        filesUploaded.textContent = ++uploaded;
                     }
                 });
         };
