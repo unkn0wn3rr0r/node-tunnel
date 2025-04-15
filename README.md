@@ -52,16 +52,16 @@ Both versions include drag-and-drop functionality, real-time progress bars, and 
 - Linux:
    ```bash
    openssl req -x509 -newkey rsa:2048 -nodes -sha256 -subj '/CN=localhost' -keyout localhost-privkey.pem -out localhost-cert.pem
-2. Run the server from **v1-http1** or **v2-http2**:
+3. Run the server from **v1-http1** or **v2-http2**:
    ```bash
    node server.js
-3. UI:
+4. UI:
    - Go to http://localhost:3000 in your browser for **http1**
    - Go to https://localhost:3000 in your browser for **http2**
    - If you are testing from different machines find your local network IP, for example - https://192.168.xx.xx:3000
 
 # 📚 Disclaimer:
-This project was built for fun and educational purposes — to explore file uploading, streaming with HTTP/2, and browser-based UI interactions.
+This project was built for fun and educational purposes - to explore file uploading, streaming with HTTP/2, and browser-based UI interactions.
 While functional, it has limitations and areas that can be improved, such as:
 - Error handling and retry logic
 - Not optimized for very large files - uploads over 40-50 GiBs may fail or behave unpredictably due to browser, memory, or network constraints
