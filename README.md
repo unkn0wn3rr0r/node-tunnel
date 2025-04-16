@@ -18,16 +18,6 @@ Both versions include drag-and-drop functionality, real-time progress bars, and 
 | Server requirements              | Pure Node.js (no libs)           | Pure Node.js (no libs)                                    |
 | Performance                      | Slow 🐢 (files up to 300 MiBs)   | Lightning fast  🚈  (depends on network connection)      |
 
-# Features:
-
-- 🖱 Drag & Drop and file input support
-- 📂 File metadata display:
-  - file count
-  - total files size
-  - uploaded files (**http2** only))
-- 📊 Individual file progress bars (**http2** only)
-- ✅ Success modal on completion (**http2** only)
-- 🔁 Concurrency control for smoother UX (**http2** only)
 
 # Notes
 - Uses duplex: 'half' header for streamed fetch uploads - ensure your browser supports it
