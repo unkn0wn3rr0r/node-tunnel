@@ -94,23 +94,16 @@ async function handleFiles(files) {
                 signal,
             })
                 .then((response) => {
-                    if (!response.ok || response.status !== 200) {
-                        throw new Error('Upload failed.');
-                    }
+                    validateResponse(response);
                     console.log(`File upload was successful: ${file.name}`);
-                    progress.style.backgroundColor = '#4caf50';
-                    progress.style.width = '100%';
-                    progressText.textContent = '100%';
+                    setProgressStatus('success', progress, progressText);
                 })
                 .catch((error) => {
+                    console.error(`File upload failed: ${file.name} ${error?.message ?? error ?? ''}`);
                     if (signal.aborted) {
-                        console.error(error);
-                        progress.style.backgroundColor = 'gray';
-                        progressText.textContent = 'Canceled';
+                        setProgressStatus('canceled', progress, progressText);
                     } else {
-                        console.error(`File upload failed: ${file.name} ${error.message}`);
-                        progress.style.backgroundColor = 'red';
-                        progressText.textContent = 'Failed';
+                        setProgressStatus('failed', progress, progressText);
                         hasFailed = true;
                     }
                 })
@@ -165,6 +158,12 @@ function showModal(fileUploadItems, uploadedCount, cb) {
     }, { once: true });
 }
 
+function validateResponse(response) {
+    if (!response.ok || response.status !== 200) {
+        throw new Error('Upload failed.');
+    }
+}
+
 function createElementWrapper(tagName, clazz, textContent) {
     const element = document.createElement(tagName);
     element.classList.add(clazz);
@@ -197,6 +196,24 @@ function createFileUploadItem(fileInfo, progressBar) {
     fileUploadItem.appendChild(fileInfo);
     fileUploadItem.appendChild(progressBar);
     return fileUploadItem;
+}
+
+function setProgressStatus(status, progress, progressText) {
+    switch (status) {
+        case 'success':
+            progress.style.backgroundColor = '#4caf50';
+            progress.style.width = '100%';
+            progressText.textContent = '100%';
+            break;
+        case 'canceled':
+            progress.style.backgroundColor = 'gray';
+            progressText.textContent = 'Canceled';
+            break;
+        case 'failed':
+            progress.style.backgroundColor = 'red';
+            progressText.textContent = 'Failed';
+            break;
+    }
 }
 
 function getTotalFileSize(files) {
