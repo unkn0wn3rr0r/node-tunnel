@@ -263,10 +263,5 @@ function getFileSizeFormat(numberOfBytes) {
 }
 
 function isFileEmpty(exponent, approx) {
-    return exponent === Infinity
-        || exponent === -Infinity
-        || approx === Infinity
-        || approx === -Infinity
-        || isNaN(exponent)
-        || isNaN(approx);
+    return !isFinite(exponent) || !isFinite(approx);
 }

@@ -80,7 +80,7 @@ function handleFileUpload(req, res) {
                 fileData = fileData.slice(0, -2);
             }
 
-            const filePath = path.join(__dirname, 'uploads', filename);
+            const filePath = getFilepath('uploads', filename);
             fs.writeFile(filePath, fileData, (err) => {
                 if (err) {
                     throw err;
