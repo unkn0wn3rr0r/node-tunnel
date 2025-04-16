@@ -94,22 +94,22 @@ function getBaseLog(x, base = 1024) {
 }
 
 function getFileSizeFormat(numberOfBytes) {
-    const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+    const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
     const baseLog = getBaseLog(numberOfBytes);
     const exponent = Math.min(Math.floor(baseLog), units.length - 1);
     const approx = numberOfBytes / (1024 ** exponent);
     if (isFileEmpty(exponent, approx)) {
-        return `${numberOfBytes} ${units[0]}`;
+        return `${numberOfBytes} ${units[0]}s`;
     }
     if (exponent === 0) {
-        return `${numberOfBytes} ${units[exponent]}`;
+        return `${numberOfBytes} ${units[exponent]}s`;
     }
     if (exponent > 2 || (exponent === 2 && approx > 300)) {
-        alert('File is too large. Try with file/s less than 300 Mib.');
+        alert('File is too large. Try with file/s less than 300 MBs.');
         resetUploadState();
-        throw new Error('File is too large. Try with file/s less than 300 Mib.');
+        throw new Error('File is too large. Try with file/s less than 300 MBs.');
     }
-    return `${approx.toFixed(3)} ${units[exponent]}`;
+    return `${approx.toFixed(3)} ${units[exponent]}s`;
 }
 
 function isFileEmpty(exponent, approx) {

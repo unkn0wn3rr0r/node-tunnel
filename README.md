@@ -16,7 +16,7 @@ Both versions include drag-and-drop functionality, real-time progress bars, and 
 | Upload method                    | Full file read (in memory)       | Streamed with `ReadableStream` (minimal memory usage)     |
 | Browser compatibility            | Widely supported                 | Requires modern browsers                                  |
 | Server requirements              | Pure Node.js (no libs)           | Pure Node.js (no libs)                                    |
-| Performance                      | Slow 🐢 (files up to 300 MiBs)   | Lightning fast  🚈  (depends on network connection)      |
+| Performance                      | Slow 🐢 (files up to 300 MBs)    | Lightning fast  🚈  (depends on network connection)      |
 
 
 # Notes
