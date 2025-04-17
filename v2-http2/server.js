@@ -62,6 +62,18 @@ function handleFileUpload(req, res) {
         writeResponse(res, `Upload failed: ${err.message}`, 'text/plain', 500);
     }
 
+    writeStream.on('drain', () => req.resume());
+    writeStream.on('error', handleError);
+    const cleanup = finished(writeStream, (err) => {
+        cleanup();
+        if (err) {
+            console.error(`❌ Upload failed: ${err.message} ${filename}`);
+        } else {
+            console.log(req.aborted ? `❗ Upload canceled: ${filename}` : `✅ Upload successful: ${filename}`);
+            writeResponse(res, req.aborted ? `Upload canceled: ${filename}` : `Uploaded file: ${filename}`, 'text/plain');
+        }
+    });
+
     req.on('end', () => writeStream.end());
     req.on('error', handleError);
     req.on('aborted', (_, __) => deleteFile(filepath));
@@ -69,19 +81,6 @@ function handleFileUpload(req, res) {
         if (!writeStream.write(chunk)) {
             req.pause();
         }
-    });
-
-    writeStream.on('drain', () => req.resume());
-    writeStream.on('error', handleError);
-    writeStream.on('finish', () => {
-        console.log(req.aborted ? `❗ Upload canceled: ${filename}` : `✅ Upload successful: ${filename}`);
-        writeResponse(res, req.aborted ? `Upload canceled: ${filename}` : `Uploaded file: ${filename}`, 'text/plain');
-        const cleanup = finished(writeStream, (err) => {
-            cleanup();
-            if (err) {
-                console.error(`Stream cleanup failed: ${err.message}`);
-            }
-        });
     });
 }
 
