@@ -29,65 +29,70 @@ const options = {
     allowHTTP1: true,
 };
 
-const server = http2.createSecureServer(options, (req, res) => {
-    if (req.method === 'POST' && req.url === '/uploads') {
-        handleFileUpload(req, res);
-    } else {
-        const filepath = getFilepath(req.url === '/' ? 'index.html' : req.url);
-        const mimeType = MIME_TYPES[getExtension(filepath)];
-        handleStaticAssets(res, filepath, mimeType);
-    }
-});
-server.on('sessionError', (error) => console.error(`[SESSION ERROR]: ${error.message}`));
+const server = http2.createSecureServer(options);
+server.on('stream', router);
 server.on('timeout', () => console.warn('[TIMEOUT]: timed out'));
+server.on('sessionError', (error) => console.error(`[SESSION ERROR]: ${error.message}`));
 server.listen(PORT, () => console.log(`Server listening on https://localhost:${PORT}`));
 
-function handleStaticAssets(res, filepath, mimeType) {
+function router(stream, headers) {
+    const { ':path': path, ':method': method } = headers;
+
+    if (path === '/uploads' && method === 'POST') {
+        handleFileUpload(stream, headers);
+    } else {
+        const filepath = getFilepath(path === '/' ? 'index.html' : path);
+        const mimeType = MIME_TYPES[getExtension(filepath)];
+        handleStaticAssets(stream, filepath, mimeType);
+    }
+}
+
+function handleStaticAssets(stream, filepath, mimeType) {
     fs.readFile(filepath, (err, data) => {
         if (err) {
-            writeResponse(res, `Internal Server Error: ${err.message}`, 'text/plain', 500);
+            writeResponse(stream, `Internal Server Error: ${err.message}`, 'text/plain', 500);
         } else {
-            writeResponse(res, data, mimeType);
+            writeResponse(stream, data, mimeType);
         }
     });
 }
 
-function handleFileUpload(req, res) {
-    const filename = decodeURIComponent(req.headers['x-filename']);
+function handleFileUpload(stream, headers) {
+    const filename = decodeURIComponent(headers['x-filename']);
     const filepath = getFilepath('uploads', filename);
     const writeStream = fs.createWriteStream(filepath, { highWaterMark: 1024 * 1024 });
 
     function handleError(err) {
         deleteFile(filepath);
-        writeResponse(res, `Upload failed: ${err.message}`, 'text/plain', 500);
+        writeResponse(stream, `Upload failed: ${err.message}`, 'text/plain', 500);
     }
 
-    writeStream.on('drain', () => req.resume());
+    writeStream.on('drain', () => stream.resume());
     writeStream.on('error', handleError);
     const cleanup = finished(writeStream, (err) => {
         cleanup();
         if (err) {
-            console.error(`❌ Upload failed: ${err.message} ${filename}`);
+            console.error(`❌ Upload failed: ${err.message}`);
         } else {
-            console.log(req.aborted ? `❗ Upload canceled: ${filename}` : `✅ Upload successful: ${filename}`);
-            writeResponse(res, req.aborted ? `Upload canceled: ${filename}` : `Uploaded file: ${filename}`, 'text/plain');
+            console.log(stream.aborted ? `❗ Upload canceled: ${filename}` : `✅ Upload successful: ${filename}`);
+            writeResponse(stream, stream.aborted ? `Upload canceled: ${filename}` : `Uploaded file: ${filename}`, 'text/plain');
         }
     });
 
-    req.on('end', () => writeStream.end());
-    req.on('error', handleError);
-    req.on('aborted', (_, __) => deleteFile(filepath));
-    req.on('data', (chunk) => {
+    stream.on('end', () => writeStream.end());
+    stream.on('error', handleError);
+    stream.on('aborted', (_, __) => deleteFile(filepath));
+    stream.on('data', (chunk) => {
         if (!writeStream.write(chunk)) {
-            req.pause();
+            stream.pause();
         }
     });
 }
 
-function writeResponse(res, data, contentType, status = 200) {
-    if (!res.writableEnded) {
-        res.writeHead(status, { 'Content-Type': contentType });
-        res.end(data);
+function writeResponse(stream, data, contentType, status = 200) {
+    if (!stream.writableEnded) {
+        stream.respond({ 'Content-Type': contentType, ':status': status });
+        stream.end(data);
     }
 }
 
@@ -102,7 +107,7 @@ function getExtension(filepath) {
 function deleteFile(filepath) {
     fs.unlink(filepath, (err) => {
         if (err) {
-            console.error(`File deletion failed: ${filepath} ${err.message}`);
+            console.error(`File deletion failed: ${err.message}`);
         }
     });
 }

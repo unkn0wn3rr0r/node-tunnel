@@ -32,7 +32,7 @@ async function handleFiles(files) {
     fileSize.textContent = getFileSizeFormat(totalFileSize);
     fileInput.disabled = true;
 
-    const MAX_CONCURRENT_UPLOADS = 8;
+    const MAX_CONCURRENT_UPLOADS = 10;
     const fileUploadItems = [];
     const uploadTasks = [];
 
@@ -49,7 +49,7 @@ async function handleFiles(files) {
         cancelBtn.addEventListener('click', () => {
             abortController.abort(`Upload canceled: ${file.name}`);
             cancelBtn.disabled = true;
-        }, { once: true });
+        });
 
         const fileUploadItem = createFileUploadItem(fileInfo, progressBar);
         fileUploadItems.push(fileUploadItem);
@@ -226,7 +226,7 @@ function getTotalFileSize(files) {
 
 function calculateProgress(loaded, total, progress, progressText) {
     const percent = (loaded / total) * 100;
-    const randomProgress = Math.floor(90 + Math.random() * 11); // simulate artificial progress, because async ui operations are faster than the servers response, in other words, create a better user experience
+    const randomProgress = Math.floor(90 + Math.random() * 10); // simulate artificial progress, because async ui operations are faster than the servers response, in other words, create a better user experience
     const finalPercent = Math.min(percent, randomProgress);
     progress.style.width = finalPercent.toFixed() + '%';
     progressText.textContent = finalPercent.toFixed() + '%';
