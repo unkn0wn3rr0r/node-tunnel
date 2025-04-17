@@ -1,7 +1,13 @@
-const http2 = require('node:http2');
+const { createSecureServer, constants } = require('node:http2');
 const fs = require('fs');
 const path = require('path');
 const { finished } = require('node:stream');
+
+const {
+    HTTP2_METHOD_POST,
+    HTTP_STATUS_OK,
+    HTTP_STATUS_INTERNAL_SERVER_ERROR,
+} = constants;
 
 const PORT = 3000;
 const MIME_TYPES = {
@@ -29,7 +35,7 @@ const options = {
     allowHTTP1: true,
 };
 
-const server = http2.createSecureServer(options);
+const server = createSecureServer(options);
 server.on('stream', router);
 server.on('timeout', () => console.warn('[TIMEOUT]: timed out'));
 server.on('sessionError', (error) => console.error(`[SESSION ERROR]: ${error.message}`));
@@ -38,7 +44,7 @@ server.listen(PORT, () => console.log(`Server listening on https://localhost:${P
 function router(stream, headers) {
     const { ':path': path, ':method': method } = headers;
 
-    if (path === '/uploads' && method === 'POST') {
+    if (path === '/uploads' && method === HTTP2_METHOD_POST) {
         handleFileUpload(stream, headers);
     } else {
         const filepath = getFilepath(path === '/' ? 'index.html' : path);
@@ -50,7 +56,7 @@ function router(stream, headers) {
 function handleStaticAssets(stream, filepath, mimeType) {
     fs.readFile(filepath, (err, data) => {
         if (err) {
-            writeResponse(stream, `Internal Server Error: ${err.message}`, 'text/plain', 500);
+            writeResponse(stream, `Internal Server Error: ${err.message}`, 'text/plain', HTTP_STATUS_INTERNAL_SERVER_ERROR);
         } else {
             writeResponse(stream, data, mimeType);
         }
@@ -64,7 +70,7 @@ function handleFileUpload(stream, headers) {
 
     function handleError(err) {
         deleteFile(filepath);
-        writeResponse(stream, `Upload failed: ${err.message}`, 'text/plain', 500);
+        writeResponse(stream, `Upload failed: ${err.message}`, 'text/plain', HTTP_STATUS_INTERNAL_SERVER_ERROR);
     }
 
     writeStream.on('drain', () => stream.resume());
@@ -89,7 +95,7 @@ function handleFileUpload(stream, headers) {
     });
 }
 
-function writeResponse(stream, data, contentType, status = 200) {
+function writeResponse(stream, data, contentType, status = HTTP_STATUS_OK) {
     if (!stream.writableEnded) {
         stream.respond({ 'Content-Type': contentType, ':status': status });
         stream.end(data);
