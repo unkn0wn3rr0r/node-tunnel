@@ -54,4 +54,4 @@ Both versions include drag-and-drop functionality, real-time progress bars, and 
 This project was built for fun and educational purposes - to explore file uploading, streaming with HTTP/2, and browser-based UI interactions.
 While functional, it has limitations and areas that can be improved, such as:
 - Error handling and retry logic
-- Not optimized for very large files - uploads over 40-50 GiBs may fail or behave unpredictably due to browser, memory, or network constraints
+- Not optimized for larger files - uploads over 15-20 GBs may fail or behave unpredictably due to browser, memory, or network constraints
