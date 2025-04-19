@@ -51,7 +51,37 @@
         </div>
     </div>
 
-    <script src="index.js"></script>
+    <script>
+        const supportsRequestStreams = (() => {
+            let duplexAccessed = false;
+
+            const req = new Request('', {
+                body: new ReadableStream(),
+                method: 'POST',
+                get duplex() {
+                    duplexAccessed = true;
+                    return 'half';
+                },
+            });
+
+            return duplexAccessed && !req.headers.has('Content-Type');
+        })();
+
+        if (supportsRequestStreams) {
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = 'index.js';
+            document.body.append(script);
+        } else {
+            document.getElementsByTagName('body')[0].innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+                <h1>ReadableStream API is</h1>
+                <img src="images/not-supported.png">
+                <h1>in your browser.</h1>
+            </div>
+        `;
+        }
+    </script>
 </body>
 
 </html>

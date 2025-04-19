@@ -1,7 +1,7 @@
 const { createSecureServer, constants } = require('node:http2');
+const { finished } = require('node:stream');
 const fs = require('fs');
 const path = require('path');
-const { finished } = require('node:stream');
 
 const {
     HTTP2_METHOD_GET,
@@ -56,20 +56,33 @@ function router(stream, headers) {
     }
 }
 
-function handleSSEConnection(stream, uploadId) {
-    SSE_CONNECTIONS.set(uploadId, stream);
-    stream.respond({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
-    stream.on('close', () => SSE_CONNECTIONS.delete(uploadId));
+function handleSSEConnection(conn, uploadId) {
+    SSE_CONNECTIONS.set(uploadId, conn);
+    conn.respond({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
+    conn.on('close', () => SSE_CONNECTIONS.delete(uploadId));
 }
 
 function handleStaticAssets(stream, filepath, mimeType) {
-    fs.readFile(filepath, (err, data) => {
-        if (err) {
-            writeResponse(stream, `Internal Server Error: ${err.message}`, 'text/plain', HTTP_STATUS_INTERNAL_SERVER_ERROR);
-        } else {
-            writeResponse(stream, data, mimeType);
+    function statCheck(stat, headers) {
+        headers['last-modified'] = stat.mtime.toUTCString();
+    }
+    function onError(err) {
+        try {
+            if (err.code === 'ENOENT') {
+                stream.respond({ ':status': 404 });
+            } else {
+                stream.respond({ ':status': 500 });
+            }
+        } catch (err) {
+            console.error(err);
         }
-    });
+        stream.end();
+    }
+    stream.respondWithFile(
+        filepath,
+        { 'Content-Type': mimeType },
+        { statCheck, onError },
+    );
 }
 
 function handleFileUpload(stream, headers) {
@@ -95,7 +108,11 @@ function handleFileUpload(stream, headers) {
             console.error(`❌ Upload failed: ${err.message}`);
             writeResponse(stream, `Upload failed: ${err.message}`, 'text/plain', HTTP_STATUS_INTERNAL_SERVER_ERROR);
         } else {
-            sendSSEUpdate(uploadId, 100, 'success');
+            if (stream.aborted) {
+                sendSSEUpdate(uploadId, 0, 'canceled');
+            } else {
+                sendSSEUpdate(uploadId, 100, 'success');
+            }
             console.log(stream.aborted ? `❗ Upload canceled: ${filename}` : `✅ Upload successful: ${filename}`);
             writeResponse(stream, stream.aborted ? `Upload canceled: ${filename}` : `Uploaded file: ${filename}`, 'text/plain');
         }
@@ -104,11 +121,6 @@ function handleFileUpload(stream, headers) {
 
     stream.on('end', () => writeStream.end());
     stream.on('error', handleError);
-    stream.on('aborted', (_, __) => {
-        deleteFile(filepath);
-        sendSSEUpdate(uploadId, 0, 'canceled');
-        SSE_CONNECTIONS.delete(uploadId);
-    });
 
     let loaded = 0;
     stream.on('data', (chunk) => {
@@ -127,9 +139,9 @@ function sendSSEUpdate(uploadId, loadPercent, event) {
     const data = JSON.stringify({ loadPercent });
     const message = `event: ${event}\ndata: ${data}\n\n`;
 
-    const stream = SSE_CONNECTIONS.get(uploadId);
-    if (stream && !stream.writableEnded) {
-        stream.write(message);
+    const conn = SSE_CONNECTIONS.get(uploadId);
+    if (conn && !conn.writableEnded) {
+        conn.write(message);
     }
 }
 
