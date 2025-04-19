@@ -104,19 +104,19 @@ function handleFileUpload(stream, headers) {
     const cleanup = finished(writeStream, (err) => {
         cleanup();
         if (err) {
-            sendSSEUpdate(uploadId, 0, 'failed');
             console.error(`❌ Upload failed: ${err.message}`);
-            writeResponse(stream, `Upload failed: ${err.message}`, 'text/plain', HTTP_STATUS_INTERNAL_SERVER_ERROR);
+            handleError(err);
         } else {
             if (stream.aborted) {
+                deleteFile(filepath);
                 sendSSEUpdate(uploadId, 0, 'canceled');
             } else {
                 sendSSEUpdate(uploadId, 100, 'success');
             }
             console.log(stream.aborted ? `❗ Upload canceled: ${filename}` : `✅ Upload successful: ${filename}`);
             writeResponse(stream, stream.aborted ? `Upload canceled: ${filename}` : `Uploaded file: ${filename}`, 'text/plain');
+            SSE_CONNECTIONS.delete(uploadId);
         }
-        SSE_CONNECTIONS.delete(uploadId);
     });
 
     stream.on('end', () => writeStream.end());
