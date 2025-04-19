@@ -47,7 +47,7 @@ async function handleFiles(files) {
         const { progressBar, progress, progressText } = createProgressElements();
 
         const uploadId = crypto.randomUUID();
-        const eventSource = subscribeToSSEUpdates(uploadId, progress, progressText);
+        subscribeToSSEUpdates(uploadId, progress, progressText);
 
         cancelBtn.addEventListener('click', () => {
             abortController.abort(`Upload canceled: ${file.name}`);
@@ -119,9 +119,6 @@ async function handleFiles(files) {
                     } else {
                         filesUploaded.textContent = ++uploaded;
                     }
-                    if (eventSource.readyState !== eventSource.CLOSED) {
-                        eventSource.close();
-                    }
                 });
         };
 
@@ -172,7 +169,6 @@ function subscribeToSSEUpdates(uploadId, progress, progressText) {
         setProgressStatus('canceled', loadPercent, progress, progressText);
         eventSource.close();
     });
-    return eventSource;
 }
 
 function resetUIState(fileUploadItems) {
