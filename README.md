@@ -16,16 +16,11 @@ Both versions include drag-and-drop functionality, real-time progress bars, and 
 | Upload method                    | Full file read (in memory)       | Streamed with `ReadableStream` (minimal memory usage)     |
 | Browser compatibility            | Widely supported                 | Requires modern browsers                                  |
 | Server requirements              | Pure Node.js (no libs)           | Pure Node.js (no libs)                                    |
-| Performance                      | Slow 🐢 (files up to 300 MBs)    | Lightning fast  🚈  (depends on network connection)      |
-
-
-# Notes
-- Uses duplex: 'half' header for streamed fetch uploads - ensure your browser supports it
-- The UI simulates progress to smooth out jumps due to fast async handling vs slower network speed
+| Performance                      | Slow (files up to 300 MBs)       | High (depends on network connection)                      |
 
 # 📦 Prerequisites:
 - Node.js installed - v20+
-- Modern web browser (for HTTP/2 streaming support in **v2-http2**)
+- Modern web browser (for HTTP/2 streaming support in **v2-http2**) - Uses duplex: 'half' header for streamed fetch uploads - ensure your browser supports it
 - Self-signed certificates for local HTTPS (required for HTTP/2)
 
 # 🚀 Getting Started:
