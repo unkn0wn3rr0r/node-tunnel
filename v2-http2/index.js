@@ -46,6 +46,9 @@ async function handleFiles(files) {
         const { fileInfo, cancelBtn } = createFileInfo(file.name, file.size);
         const { progressBar, progress, progressText } = createProgressElements();
 
+        const uploadId = crypto.randomUUID();
+        const eventSource = subscribeToSSEUpdates(uploadId, progress, progressText);
+
         cancelBtn.addEventListener('click', () => {
             abortController.abort(`Upload canceled: ${file.name}`);
             cancelBtn.disabled = true;
@@ -56,7 +59,6 @@ async function handleFiles(files) {
         document.body.appendChild(fileUploadItem);
 
         const uploadTask = async () => {
-            let fileLoaded = 0;
             const reader = file.stream().getReader();
             const stream = new ReadableStream({
                 start(controller) {
@@ -68,8 +70,6 @@ async function handleFiles(files) {
                             if (done) {
                                 return controller.close();
                             }
-                            fileLoaded += value.byteLength;
-                            calculateProgress(fileLoaded, file.size, progress, progressText);
                             controller.enqueue(value);
                             read();
                         }).catch((error) => {
@@ -88,7 +88,11 @@ async function handleFiles(files) {
             let hasFailed = false;
             return fetch('/uploads', {
                 method: 'POST',
-                headers: { 'x-filename': encodeURIComponent(file.name) },
+                headers: {
+                    'x-filename': encodeURIComponent(file.name),
+                    'x-filesize': file.size,
+                    'x-uploadid': uploadId,
+                },
                 duplex: 'half',
                 body: stream,
                 signal,
@@ -96,14 +100,14 @@ async function handleFiles(files) {
                 .then((response) => {
                     validateResponse(response);
                     console.log(`File upload was successful: ${file.name}`);
-                    setProgressStatus('success', progress, progressText);
+                    setProgressStatus('success', 100, progress, progressText);
                 })
                 .catch((error) => {
                     console.error(`File upload failed: ${file.name} ${error?.message ?? error ?? ''}`);
                     if (signal.aborted) {
-                        setProgressStatus('canceled', progress, progressText);
+                        setProgressStatus('canceled', 0, progress, progressText);
                     } else {
-                        setProgressStatus('failed', progress, progressText);
+                        setProgressStatus('failed', 0, progress, progressText);
                         hasFailed = true;
                     }
                 })
@@ -114,6 +118,9 @@ async function handleFiles(files) {
                         filesFailed.textContent = ++failed;
                     } else {
                         filesUploaded.textContent = ++uploaded;
+                    }
+                    if (eventSource.readyState !== eventSource.CLOSED) {
+                        eventSource.close();
                     }
                 });
         };
@@ -142,6 +149,30 @@ async function limitConcurrency(tasks, maxConcurrent) {
     }
 
     return Promise.all(results);
+}
+
+function subscribeToSSEUpdates(uploadId, progress, progressText) {
+    const eventSource = new EventSource(`/upload-progress/${uploadId}`);
+    eventSource.addEventListener('progress', (event) => {
+        const { loadPercent } = JSON.parse(event.data);
+        setProgressStatus('progress', loadPercent, progress, progressText);
+    });
+    eventSource.addEventListener('success', (event) => {
+        const { loadPercent } = JSON.parse(event.data);
+        setProgressStatus('success', loadPercent, progress, progressText);
+        eventSource.close();
+    });
+    eventSource.addEventListener('failed', (event) => {
+        const { loadPercent } = JSON.parse(event.data);
+        setProgressStatus('failed', loadPercent, progress, progressText);
+        eventSource.close();
+    });
+    eventSource.addEventListener('canceled', (event) => {
+        const { loadPercent } = JSON.parse(event.data);
+        setProgressStatus('canceled', loadPercent, progress, progressText);
+        eventSource.close();
+    });
+    return eventSource;
 }
 
 function resetUIState(fileUploadItems) {
@@ -198,15 +229,19 @@ function createFileUploadItem(fileInfo, progressBar) {
     return fileUploadItem;
 }
 
-function setProgressStatus(status, progress, progressText) {
+function setProgressStatus(status, loadPercent, progress, progressText) {
     switch (status) {
+        case 'progress':
+            progress.style.width = loadPercent.toFixed() + '%';
+            progressText.textContent = loadPercent.toFixed() + '%';
+            break;
         case 'success':
             progress.style.backgroundColor = '#4caf50';
-            progress.style.width = '100%';
-            progressText.textContent = '100%';
+            progress.style.width = loadPercent.toFixed() + '%';
+            progressText.textContent = loadPercent.toFixed() + '%';
             break;
         case 'canceled':
-            progress.style.backgroundColor = 'gray';
+            progress.style.backgroundColor = 'orange';
             progressText.textContent = 'Canceled';
             break;
         case 'failed':
@@ -222,14 +257,6 @@ function getTotalFileSize(files) {
         size += file.size;
     }
     return size;
-}
-
-function calculateProgress(loaded, total, progress, progressText) {
-    const percent = (loaded / total) * 100;
-    const randomProgress = Math.floor(90 + Math.random() * 10); // simulate artificial progress, because async ui operations are faster than the servers response, in other words, create a better user experience
-    const finalPercent = Math.min(percent, randomProgress);
-    progress.style.width = finalPercent.toFixed() + '%';
-    progressText.textContent = finalPercent.toFixed() + '%';
 }
 
 function resetUploadState() {
