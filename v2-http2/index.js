@@ -6,8 +6,14 @@ const filesUploaded = document.getElementById('filesUploaded');
 const filesCanceled = document.getElementById('filesCanceled');
 const filesFailed = document.getElementById('filesFailed');
 const successModal = document.getElementById('successModal');
-const closeModalBtn = document.getElementById('closeModalBtn');
 const uploadInfo = document.getElementById('uploadInfo');
+const closeModalBtn = document.getElementById('closeModalBtn');
+const errorModal = document.getElementById('errorModal');
+const errorInfo = document.getElementById('errorInfo');
+const closeErrorModalBtn = document.getElementById('closeErrorModalBtn');
+
+const MAX_SIZE_FILES_ALLOWED = 100;
+const MAX_CONCURRENT_UPLOADS = 10;
 
 dropbox.addEventListener('dragenter', suppressEvents);
 dropbox.addEventListener('dragover', suppressEvents);
@@ -26,13 +32,21 @@ function drop(e) {
 
 async function handleFiles(files) {
     const fileList = this.files ?? files;
-    const totalFileSize = getTotalFileSize(fileList);
+    if (fileList.length > MAX_SIZE_FILES_ALLOWED) {
+        return showModal(
+            [],
+            errorModal,
+            errorInfo,
+            closeErrorModalBtn,
+            `You selected ${fileList.length} files. The maximum allowed is ${MAX_SIZE_FILES_ALLOWED}.`,
+            resetUIState,
+        );
+    }
 
     fileCount.textContent = fileList.length;
-    fileSize.textContent = getFileSizeFormat(totalFileSize);
+    fileSize.textContent = getFileSizeFormat(getTotalFileSize(fileList));
     fileInput.disabled = true;
 
-    const MAX_CONCURRENT_UPLOADS = 10;
     const fileUploadItems = [];
     const uploadTasks = [];
 
@@ -126,7 +140,14 @@ async function handleFiles(files) {
     }
 
     await limitConcurrency(uploadTasks, MAX_CONCURRENT_UPLOADS);
-    showModal(fileUploadItems, uploaded, resetUIState);
+    showModal(
+        fileUploadItems,
+        successModal,
+        uploadInfo,
+        closeModalBtn,
+        `${uploaded} Files were uploaded successfully.`,
+        resetUIState,
+    );
 }
 
 async function limitConcurrency(tasks, maxConcurrent) {
@@ -181,13 +202,11 @@ function resetUIState(fileUploadItems) {
     resetUploadState();
 }
 
-function showModal(fileUploadItems, uploadedCount, cb) {
-    successModal.style.display = 'flex';
-    uploadInfo.textContent = `${uploadedCount} Files were uploaded successfully.`;
+function showModal(items, modal, info, btn, message, cb) {
+    modal.style.display = 'flex';
+    info.textContent = message;
 
-    closeModalBtn.addEventListener('click', () => {
-        cb(fileUploadItems);
-    }, { once: true });
+    btn.addEventListener('click', () => cb(items), { once: true });
 }
 
 function validateResponse(response) {
@@ -270,6 +289,8 @@ function resetUploadState() {
     fileInput.disabled = false;
     uploadInfo.textContent = '';
     successModal.style.display = 'none';
+    errorInfo.textContent = '';
+    errorModal.style.display = 'none';
 }
 
 function getBaseLog(x, base = 1024) {
