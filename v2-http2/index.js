@@ -169,6 +169,11 @@ function subscribeToSSEUpdates(uploadId, progress, progressText) {
         setProgressStatus('canceled', loadPercent, progress, progressText);
         eventSource.close();
     });
+    eventSource.addEventListener('error', (event) => {
+        console.error('error occured on sse connection:', event?.error);
+        setProgressStatus('failed', 0, progress, progressText);
+        eventSource.close();
+    });
 }
 
 function resetUIState(fileUploadItems) {
