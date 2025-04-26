@@ -99,7 +99,6 @@ async function handleFiles(files) {
                 },
             });
 
-            let hasFailed = false;
             return fetch('/uploads', {
                 method: 'POST',
                 headers: {
@@ -115,23 +114,16 @@ async function handleFiles(files) {
                     validateResponse(response);
                     console.log(`File upload was successful: ${file.name}`);
                     setProgressStatus('success', 100, progress, progressText);
+                    filesUploaded.textContent = ++uploaded;
                 })
                 .catch((error) => {
                     console.error(`File upload failed: ${file.name} ${error?.message ?? error ?? ''}`);
                     if (signal.aborted) {
                         setProgressStatus('canceled', 0, progress, progressText);
+                        filesCanceled.textContent = ++canceled;
                     } else {
                         setProgressStatus('failed', 0, progress, progressText);
-                        hasFailed = true;
-                    }
-                })
-                .finally(() => {
-                    if (signal.aborted) {
-                        filesCanceled.textContent = ++canceled;
-                    } else if (hasFailed) {
                         filesFailed.textContent = ++failed;
-                    } else {
-                        filesUploaded.textContent = ++uploaded;
                     }
                 });
         };
