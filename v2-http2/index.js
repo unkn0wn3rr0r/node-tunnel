@@ -50,9 +50,9 @@ async function handleFiles(files) {
     const fileUploadItems = [];
     const uploadTasks = [];
 
-    let uploaded = 0;
-    let canceled = 0;
-    let failed = 0;
+    let uploadedCount = 0;
+    let canceledCount = 0;
+    let failedCount = 0;
     for (const file of fileList) {
         const abortController = new AbortController();
         const signal = abortController.signal;
@@ -113,17 +113,14 @@ async function handleFiles(files) {
                 .then((response) => {
                     validateResponse(response);
                     console.log(`File upload was successful: ${file.name}`);
-                    setProgressStatus('success', 100, progress, progressText);
-                    filesUploaded.textContent = ++uploaded;
+                    filesUploaded.textContent = ++uploadedCount;
                 })
                 .catch((error) => {
                     console.error(`File upload failed: ${file.name} ${error?.message ?? error ?? ''}`);
                     if (signal.aborted) {
-                        setProgressStatus('canceled', 0, progress, progressText);
-                        filesCanceled.textContent = ++canceled;
+                        filesCanceled.textContent = ++canceledCount;
                     } else {
-                        setProgressStatus('failed', 0, progress, progressText);
-                        filesFailed.textContent = ++failed;
+                        filesFailed.textContent = ++failedCount;
                     }
                 });
         };
@@ -137,7 +134,7 @@ async function handleFiles(files) {
         successModal,
         uploadInfo,
         closeModalBtn,
-        `${uploaded} Files were uploaded successfully.`,
+        `${uploadedCount} Files were uploaded successfully.`,
         resetUIState,
     );
 }
@@ -182,8 +179,7 @@ function subscribeToSSEUpdates(uploadId, progress, progressText) {
         setProgressStatus('canceled', loadPercent, progress, progressText);
         eventSource.close();
     });
-    eventSource.addEventListener('error', (event) => {
-        console.error('error occured on sse connection:', event?.error);
+    eventSource.addEventListener('error', (_) => {
         setProgressStatus('failed', 0, progress, progressText);
         eventSource.close();
     });
