@@ -11,6 +11,7 @@ const closeModalBtn = document.getElementById('closeModalBtn');
 const errorModal = document.getElementById('errorModal');
 const errorInfo = document.getElementById('errorInfo');
 const closeErrorModalBtn = document.getElementById('closeErrorModalBtn');
+const presetShowModal = showModal.bind(null, resetUIState);
 
 const MAX_SIZE_FILES_ALLOWED = 100;
 const MAX_CONCURRENT_UPLOADS = 10;
@@ -33,13 +34,12 @@ function drop(e) {
 async function handleFiles(files) {
     const fileList = this.files ?? files;
     if (fileList.length > MAX_SIZE_FILES_ALLOWED) {
-        return showModal(
+        return presetShowModal(
             [],
             errorModal,
             errorInfo,
             closeErrorModalBtn,
             `You selected ${fileList.length} files. The maximum allowed is ${MAX_SIZE_FILES_ALLOWED}.`,
-            resetUIState,
         );
     }
 
@@ -129,13 +129,12 @@ async function handleFiles(files) {
     }
 
     await limitConcurrency(uploadTasks, MAX_CONCURRENT_UPLOADS);
-    showModal(
+    presetShowModal(
         fileUploadItems,
         successModal,
         uploadInfo,
         closeModalBtn,
         `${uploadedCount} Files were uploaded successfully.`,
-        resetUIState,
     );
 }
 
@@ -190,7 +189,7 @@ function resetUIState(fileUploadItems) {
     resetUploadState();
 }
 
-function showModal(items, modal, info, btn, message, cb) {
+function showModal(cb, items, modal, info, btn, message) {
     modal.style.display = 'flex';
     info.textContent = message;
 
